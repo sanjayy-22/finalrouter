@@ -35,6 +35,16 @@ python -m evaluation.replay --queries data/synthetic/queries.jsonl \
     --outcomes data/synthetic/outcomes.jsonl --models serving/models.json --out results/synthetic
 ```
 
+## Pilot: GSM8K (real questions)
+
+`data/queries_gsm8k.jsonl` holds 300 problems sampled (seed 0) from the official GSM8K test split
+([openai/grade-school-math](https://github.com/openai/grade-school-math), MIT), 90 dev / 210 test.
+The numeric scorer reproduces 1319/1319 reference answers. On a machine with one ≥40 GB GPU:
+
+```bash
+bash scripts/run_gsm8k_pilot.sh      # serves 4B, 8B, 14B in turn, collects, then runs the replay comparison
+```
+
 ## Real run (GPU machine)
 
 ```bash
