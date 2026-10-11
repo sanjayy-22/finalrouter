@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adaptive LLM Router</title>
+<style>
+  :root { --ink: #000; --paper: #fff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px; }
+  .sub { margin: 0; font-size: 14px; }
+  .banner { border: 2px dashed var(--ink); padding: 8px 12px; margin: 12px 0 0; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .box { border: 1px solid var(--ink); padding: 16px; margin-bottom: 20px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  textarea, select { width: 100%; font: inherit; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--ink); border-radius: 0; padding: 10px; }
+  textarea { min-height: 120px; resize: vertical; }
+  .row { display: flex; gap: 12px; align-items: end; margin-top: 12px; flex-wrap: wrap; }
+  .row > div { flex: 1 1 200px; }
+  button { font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--ink);
+    border-radius: 0; padding: 9px 16px; background: var(--paper); color: var(--ink); }
+  button.primary { background: var(--ink); color: var(--paper); }
+  button:hover { text-decoration: underline; }
+  button:disabled { cursor: default; text-decoration: none; border-style: dashed; }
+  button.primary:disabled { background: var(--paper); color: var(--ink); }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--ink); vertical-align: middle; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { height: 10px; border: 1px solid var(--ink); min-width: 60px; }
+  .bar > span { display: block; height: 100%; background: var(--ink); }
+  tr.chosen td { font-weight: 700; }
+  .answer { white-space: pre-wrap; border: 1px solid var(--ink); padding: 12px; margin-top: 12px;
+    max-height: 420px; overflow: auto; }
+  .meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; margin-top: 4px; }
+  .rate { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .rate button { padding: 7px 12px; font-weight: 500; }
+  .rate button.picked { background: var(--ink); color: var(--paper); }
+  .msg { margin-top: 10px; font-size: 14px; min-height: 1.5em; }
+  .err { border: 2px solid var(--ink); padding: 8px 12px; margin-top: 12px; font-weight: 600; }
+  .hidden { display: none; }
+  ol.hist { margin: 0; padding-left: 20px; font-size: 14px; }
+  ol.hist li { margin-bottom: 8px; overflow-wrap: anywhere; }
+  .small { font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Adaptive LLM Router</h1>
+    <p class="sub">LinUCB picks one model for each query, then learns from your rating.</p>
+    <p id="demo" class="banner hidden"><strong>Demo mode:</strong> no model is called. Answers are
+      placeholders, but routing, scores and learning are real.</p>
+  </header>
+
+  <div class="grid">
+    <main>
+      <section class="box" aria-labelledby="ask-h">
+        <h2 id="ask-h">Ask</h2>
+        <form id="ask">
+          <label for="prompt">Query</label>
+          <textarea id="prompt" required placeholder="e.g. A shop sells pens at 17 rupees each. How much do 23 pens cost?"></textarea>
+          <div class="row">
+            <div>
+              <label for="cat">Task category</label>
+              <select id="cat"><option value="">Not specified</option></select>
+            </div>
+            <button id="send" class="primary" type="submit">Route &amp; answer</button>
+          </div>
+        </form>
+        <div id="askErr" class="err hidden" role="alert"></div>
+      </section>
+
+      <section id="result" class="box hidden" aria-labelledby="res-h" aria-live="polite">
+        <h2 id="res-h">Routing decision</h2>
+        <div class="meta">
+          <span>Chosen model: <strong id="chosen"></strong></span>
+          <span>Latency: <strong id="latency"></strong></span>
+        </div>
+        <table aria-label="LinUCB score per model" style="margin-top:10px">
+          <thead><tr><th>Model</th><th class="num">Score</th><th style="width:40%">Relative</th></tr></thead>
+          <tbody id="scores"></tbody>
+        </table>
+        <p class="small">Score = estimated reward + exploration bonus. The highest score is chosen.</p>
+        <div id="answer" class="answer"></div>
+        <div id="failNote" class="err hidden"></div>
+
+        <div id="rateBox">
+          <h2 style="margin-top:18px">Rate the answer</h2>
+          <div class="rate" id="rate">
+            <button type="button" data-q="0">1 · Wrong</button>
+            <button type="button" data-q="0.25">2 · Poor</button>
+            <button type="button" data-q="0.5">3 · OK</button>
+            <button type="button" data-q="0.75">4 · Good</button>
+            <button type="button" data-q="1">5 · Perfect</button>
+          </div>
+        </div>
+        <div id="rateMsg" class="msg"></div>
+      </section>
+    </main>
+
+    <aside>
+      <section class="box" aria-labelledby="st-h">
+        <h2 id="st-h">Router state</h2>
+        <table>
+          <thead><tr><th>Model</th><th class="num">Updates</th></tr></thead>
+          <tbody id="stats"></tbody>
+        </table>
+        <p class="small" id="statMeta"></p>
+      </section>
+      <section class="box" aria-labelledby="hi-h">
+        <h2 id="hi-h">This session</h2>
+        <ol class="hist" id="hist"><li class="small" id="histEmpty">No queries yet.</li></ol>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let current = null;            // { decision_id, model, promptSnippet, li }
+
+async function api(path, body) {
+  const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify(body) } : {});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Request failed (${res.status})`);
+  return data;
+}
+
+async function loadStats() {
+  try {
+    const s = await api("/stats");
+    $("demo").classList.toggle("hidden", !s.demo);
+    const sel = $("cat");
+    if (sel.options.length === 1) {
+      for (const c of s.categories) { const o = document.createElement("option"); o.value = c; o.textContent = c; sel.append(o); }
+    }
+    const tb = $("stats"); tb.replaceChildren();
+    for (const m of s.models) {
+      const tr = document.createElement("tr");
+      const a = document.createElement("td"); a.textContent = m.name;
+      const b = document.createElement("td"); b.className = "num"; b.textContent = s.updates[m.model_id] ?? 0;
+      tr.append(a, b); tb.append(tr);
+    }
+    $("statMeta").textContent = `α = ${s.alpha} · awaiting rating: ${s.pending_feedback}`;
+  } catch (e) { $("statMeta").textContent = "Could not load router state: " + e.message; }
+}
+
+function renderScores(scores, chosen, names) {
+  const tb = $("scores"); tb.replaceChildren();
+  const vals = Object.values(scores);
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  for (const [m, v] of Object.entries(scores)) {
+    const tr = document.createElement("tr"); if (m === chosen) tr.className = "chosen";
+    const a = document.createElement("td"); a.textContent = (names[m] || m) + (m === chosen ? "  ◀ chosen" : "");
+    const b = document.createElement("td"); b.className = "num"; b.textContent = v.toFixed(3);
+    const c = document.createElement("td");
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("span"); fill.style.width = (hi === lo ? 100 : 8 + 92 * (v - lo) / span) + "%";
+    bar.append(fill); c.append(bar); tr.append(a, b, c); tb.append(tr);
+  }
+}
+
+function addHistory(text) {
+  $("histEmpty")?.remove();
+  const li = document.createElement("li"); li.textContent = text;
+  $("hist").prepend(li); return li;
+}
+
+$("ask").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const prompt = $("prompt").value.trim(); if (!prompt) return;
+  $("askErr").classList.add("hidden"); $("send").disabled = true; $("send").textContent = "Routing…";
+  try {
+    const s = await api("/stats");
+    const names = Object.fromEntries(s.models.map(m => [m.model_id, m.name]));
+    const r = await api("/route", { prompt, task_category: $("cat").value || null });
+    current = { id: r.decision_id };
+    $("result").classList.remove("hidden");
+    $("chosen").textContent = names[r.model] || r.model;
+    $("latency").textContent = Math.round(r.latency_ms) + " ms";
+    renderScores(r.scores, r.model, names);
+    $("answer").textContent = r.response || "(empty response)";
+    $("rateMsg").textContent = "";
+    for (const b of $("rate").querySelectorAll("button")) { b.disabled = false; b.classList.remove("picked"); }
+    const snippet = prompt.length > 60 ? prompt.slice(0, 60) + "…" : prompt;
+    if (r.failed) {
+      $("failNote").textContent = `The model call failed (${r.error}). It was counted as quality 0 and the router was updated.`;
+      $("failNote").classList.remove("hidden"); $("rateBox").classList.add("hidden");
+      addHistory(`${names[r.model] || r.model} — failed — “${snippet}”`);
+    } else {
+      $("failNote").classList.add("hidden"); $("rateBox").classList.remove("hidden");
+      current.li = addHistory(`${names[r.model] || r.model} — not rated — “${snippet}”`);
+      current.label = `${names[r.model] || r.model}`; current.snippet = snippet;
+    }
+  } catch (e) {
+    $("askErr").textContent = e.message; $("askErr").classList.remove("hidden");
+  } finally {
+    $("send").disabled = false; $("send").textContent = "Route & answer"; loadStats();
+  }
+});
+
+$("rate").addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("button"); if (!btn || !current) return;
+  const q = parseFloat(btn.dataset.q);
+  for (const b of $("rate").querySelectorAll("button")) b.disabled = true;
+  btn.classList.add("picked");
+  try {
+    const r = await api("/feedback", { decision_id: current.id, quality: q });
+    $("rateMsg").textContent = `Thanks. Reward ${r.reward === null ? "deferred" : r.reward.toFixed(3)} — router updated.`;
+    if (current.li) current.li.textContent = `${current.label} — rated ${btn.textContent.trim()} — “${current.snippet}”`;
+    current = null;
+  } catch (e) {
+    $("rateMsg").textContent = "Could not send rating: " + e.message;
+    for (const b of $("rate").querySelectorAll("button")) b.disabled = false;
+  } finally { loadStats(); }
+});
+
+loadStats();
+</script>
+</body>
+</html>
