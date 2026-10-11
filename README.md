@@ -45,6 +45,12 @@ The numeric scorer reproduces 1319/1319 reference answers. On a machine with one
 bash scripts/run_gsm8k_pilot.sh      # serves 4B, 8B, 14B in turn, collects, then runs the replay comparison
 ```
 
+On a single **RTX 4090 (24 GB)** use the FP8 config — step-by-step guide in [`RUNNING.md`](RUNNING.md):
+
+```bash
+MODELS_JSON=serving/models_4090.json bash scripts/run_gsm8k_pilot.sh
+```
+
 ## Real run (GPU machine)
 
 ```bash
