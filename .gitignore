@@ -3,6 +3,6 @@ __pycache__/
 .pytest_cache/
 results/
 logs/
-router_state.json
+router_state*.json
 data/synthetic/
 data/outcomes*.jsonl

@@ -36,3 +36,15 @@ def test_failure_updates_immediately(tmp_path):
     r = c.post("/route", json={"prompt": "hi"}).json()
     assert r["model"] == "l" and r["failed"]
     assert c.get("/stats").json()["updates"]["l"] == 1
+
+
+def test_ui_and_demo_mode():
+    from service.app import demo_caller
+    app = create_app(CFG, RewardConfig(), caller=demo_caller, demo=True)
+    c = TestClient(app)
+    page = c.get("/")
+    assert page.status_code == 200 and "Adaptive LLM Router" in page.text
+    s = c.get("/stats").json()
+    assert s["demo"] is True and [m["model_id"] for m in s["models"]] == ["s", "l"]
+    r = c.post("/route", json={"prompt": "2+2?", "task_category": "reasoning"}).json()
+    assert "[demo mode]" in r["response"] and set(r["scores"]) == {"s", "l"}

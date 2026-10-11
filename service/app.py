@@ -3,8 +3,10 @@
   POST /route     {"prompt": "...", "task_category": "coding"}  -> picks a model, calls it, returns the answer
   POST /feedback  {"decision_id": "...", "quality": 0.8}         -> reward + LinUCB update (delayed feedback)
   GET  /stats
+  GET  /                                                         -> simple web UI (service/static/index.html)
 
-run:  ROUTER_MODELS=serving/models.json uvicorn service.app:app --port 9000
+run:   ROUTER_MODELS=serving/models.json uvicorn service.app:app --port 9000
+demo:  ROUTER_DEMO=1 uvicorn service.app:app --port 9000     # no GPU: placeholder answers, real routing/learning
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from evaluation.collect import ServerDown, call_model, compute_cost
@@ -26,6 +29,19 @@ from evaluation.scoring import strip_thinking
 from router.features import FeatureExtractor
 from router.linucb import LinUCB
 from router.reward import RewardConfig, compute_reward
+
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+
+def demo_caller(model: Mapping, prompt: str, decoding: Mapping) -> dict:
+    """Stand-in for a model server so the UI can be tried without a GPU. Answers are placeholders;
+    latency/tokens are synthetic and scale with the model's cost factor."""
+    size = float(model.get("cost_per_1k_tokens", 1.0))
+    out_tokens = 120 + 4 * len(prompt.split())
+    return {"response": f"[demo mode] {model['name']} would answer here. No model was called.",
+            "latency_ms": 200.0 + 60.0 * size + 2.0 * out_tokens, "input_tokens": len(prompt.split()),
+            "output_tokens": out_tokens, "failed": False, "error": None}
 
 
 class RouteRequest(BaseModel):
@@ -40,7 +56,8 @@ class FeedbackRequest(BaseModel):
 
 def create_app(models_cfg: Mapping, reward_cfg: RewardConfig, state_path: str | None = None,
                log_path: str | None = None, alpha: float = 1.0, lam: float = 1.0,
-               caller: Callable = call_model, fx: FeatureExtractor | None = None) -> FastAPI:
+               caller: Callable = call_model, fx: FeatureExtractor | None = None,
+               demo: bool = False) -> FastAPI:
     models = {m["model_id"]: m for m in models_cfg["models"]}
     order = [m["model_id"] for m in models_cfg["models"]]
     decoding = models_cfg.get("decoding", {})
@@ -99,22 +116,32 @@ def create_app(models_cfg: Mapping, reward_cfg: RewardConfig, state_path: str | 
 
     @app.get("/stats")
     def stats():
-        return {"alpha": policy.alpha, "updates": policy.counts, "pending_feedback": len(pending),
-                "features": fx.names(), "reward_config": reward_cfg.to_dict()}
+        return {"models": [{"model_id": m, "name": models[m]["name"]} for m in order], "demo": demo,
+                "alpha": policy.alpha, "updates": policy.counts, "pending_feedback": len(pending),
+                "features": fx.names(), "categories": list(fx.categories), "reward_config": reward_cfg.to_dict()}
+
+    @app.get("/", include_in_schema=False)
+    def ui():
+        return FileResponse(STATIC_DIR / "index.html")
 
     return app
 
 
 def _from_env() -> FastAPI:
+    demo = os.environ.get("ROUTER_DEMO", "") not in ("", "0")
     cfg = json.load(open(os.environ.get("ROUTER_MODELS", "serving/models.json")))
     rpath = os.environ.get("ROUTER_REWARD")
-    rcfg = RewardConfig()
+    # fallback ranges: cost in the models.json proxy units, latency in ms; fit real ranges with
+    # router.reward.fit_ranges on dev outcomes and pass them via ROUTER_REWARD
+    rcfg = RewardConfig(cost_range=(0.0, 20.0), latency_range=(0.0, 10000.0))
     if rpath:
         rc = json.load(open(rpath))
         rcfg = RewardConfig(**{k: tuple(v) if k.endswith("_range") else v for k, v in rc.items()})
-    return create_app(cfg, rcfg, state_path=os.environ.get("ROUTER_STATE", "router_state.json"),
-                      log_path=os.environ.get("ROUTER_LOG", "logs/audit.jsonl"),
-                      alpha=float(os.environ.get("ROUTER_ALPHA", "1.0")))
+    default_state = "router_state_demo.json" if demo else "router_state.json"
+    return create_app(cfg, rcfg, state_path=os.environ.get("ROUTER_STATE", default_state),
+                      log_path=os.environ.get("ROUTER_LOG", "logs/audit_demo.jsonl" if demo else "logs/audit.jsonl"),
+                      alpha=float(os.environ.get("ROUTER_ALPHA", "1.0")),
+                      caller=demo_caller if demo else call_model, demo=demo)
 
 
-app = _from_env() if os.environ.get("ROUTER_MODELS") else None
+app = _from_env() if (os.environ.get("ROUTER_MODELS") or os.environ.get("ROUTER_DEMO")) else None

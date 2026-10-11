@@ -65,6 +65,19 @@ python -m experiments.sweeps --queries data/queries.jsonl --outcomes data/outcom
 ROUTER_MODELS=serving/models.json uvicorn service.app:app --port 9000          # live demo
 ```
 
+## Web UI
+
+A plain black-and-white page for trying the router: type a query, see which model LinUCB picked and
+each model's score, read the answer, and rate it (the rating updates the router).
+
+```bash
+ROUTER_DEMO=1 uvicorn service.app:app --port 9000                             # no GPU: placeholder answers
+ROUTER_MODELS=serving/models_4090.json uvicorn service.app:app --port 9000    # real models (vLLM servers running)
+```
+Then open http://localhost:9000. In demo mode the routing, scores and learning are real but no model is called.
+For real models, start the vLLM servers first (`serving/launch_vllm.sh`; on a single 4090 the three FP8
+models together need more than 24 GB, so serve one or two at a time or lower `--gpu-memory-utilization`).
+
 ## Rules that keep results honest
 - Normalization ranges, difficulty priors, rule-based rules and hyperparameters come from the **dev** split only;
   results are reported on **test**.
