@@ -1,0 +1,7 @@
+{
+  "_comment": "Use a judge model that is NOT in the routing pool; validate against ~100 hand-graded responses.",
+  "name": "<judge-model-name>",
+  "base_url": "http://localhost:8010/v1",
+  "api_key": null,
+  "timeout": 60
+}

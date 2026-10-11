@@ -1,0 +1,8 @@
+numpy>=1.26
+# live service (step 7)
+fastapi>=0.110
+uvicorn>=0.29
+# tests
+pytest>=8
+httpx>=0.27
+# model serving runs on the GPU machine: pip install vllm

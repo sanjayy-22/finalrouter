@@ -1,0 +1,9 @@
+{
+  "_comment": "Order matters: small -> large. cost_per_1k_tokens is a relative compute-cost proxy (here: nominal parameter count in billions); document whatever definition you use.",
+  "models": [
+    {"model_id": "qwen3-4b",  "name": "Qwen/Qwen3-4B",  "base_url": "http://localhost:8001/v1", "cost_per_1k_tokens": 4.0},
+    {"model_id": "qwen3-8b",  "name": "Qwen/Qwen3-8B",  "base_url": "http://localhost:8002/v1", "cost_per_1k_tokens": 8.0},
+    {"model_id": "qwen3-14b", "name": "Qwen/Qwen3-14B", "base_url": "http://localhost:8003/v1", "cost_per_1k_tokens": 14.0}
+  ],
+  "decoding": {"temperature": 0.0, "max_tokens": 1024, "enable_thinking": false, "seed": 0, "timeout_s": 120}
+}
