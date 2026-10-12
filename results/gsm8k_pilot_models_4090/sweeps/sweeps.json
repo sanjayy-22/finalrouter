@@ -1,0 +1,306 @@
+{
+  "alpha": [
+    {
+      "setting": "alpha=0.0",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "alpha=0.1",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "alpha=0.25",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "alpha=0.5",
+      "mean_reward": 0.7985375156106252,
+      "mean_quality": 0.9514285714285714,
+      "mean_cost": 2.098470476190476,
+      "mean_latency_ms": 5553.266817243608,
+      "regret": 17.21014473249153,
+      "share": {
+        "qwen3-4b": 0.599047619047619,
+        "qwen3-8b": 0.39333333333333337,
+        "qwen3-14b": 0.007619047619047618
+      }
+    },
+    {
+      "setting": "alpha=1.0",
+      "mean_reward": 0.8362274271502554,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4597409523809524,
+      "mean_latency_ms": 5358.527376335925,
+      "regret": 9.295263309169181,
+      "share": {
+        "qwen3-4b": 0.981904761904762,
+        "qwen3-8b": 0.012380952380952381,
+        "qwen3-14b": 0.005714285714285715
+      }
+    },
+    {
+      "setting": "alpha=2.0",
+      "mean_reward": 0.812981441961956,
+      "mean_quality": 0.9533333333333334,
+      "mean_cost": 1.9453828571428573,
+      "mean_latency_ms": 5375.007915315038,
+      "regret": 14.17692019871206,
+      "share": {
+        "qwen3-4b": 0.7533333333333333,
+        "qwen3-8b": 0.1742857142857143,
+        "qwen3-14b": 0.07238095238095238
+      }
+    }
+  ],
+  "weights": [
+    {
+      "setting": "w_cost=0.0, w_lat=0.0",
+      "mean_reward": 0.9476190476190476,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 10.0,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      },
+      "best_fixed": "large_only",
+      "best_fixed_reward": 0.9523809523809523
+    },
+    {
+      "setting": "w_cost=0.1, w_lat=0.05",
+      "mean_reward": 0.9178937502922428,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 9.606438340289117,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      },
+      "best_fixed": "small_only",
+      "best_fixed_reward": 0.9178937502922428
+    },
+    {
+      "setting": "w_cost=0.3, w_lat=0.2",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      },
+      "best_fixed": "small_only",
+      "best_fixed_reward": 0.838150483569225
+    },
+    {
+      "setting": "w_cost=0.6, w_lat=0.4",
+      "mean_reward": 0.687478423542937,
+      "mean_quality": 0.9495238095238095,
+      "mean_cost": 1.758558095238095,
+      "mean_latency_ms": 5460.667920893092,
+      "regret": 16.43557707742891,
+      "share": {
+        "qwen3-4b": 0.8,
+        "qwen3-8b": 0.1961904761904762,
+        "qwen3-14b": 0.00380952380952381
+      },
+      "best_fixed": "small_only",
+      "best_fixed_reward": 0.7286819195194022
+    },
+    {
+      "setting": "w_cost=1.0, w_lat=0.6",
+      "mean_reward": 0.6097807302121829,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 6.207100934683984,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      },
+      "best_fixed": "small_only",
+      "best_fixed_reward": 0.6097807302121829
+    }
+  ],
+  "ablation": [
+    {
+      "setting": "full",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "no_length",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "no_category",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "no_cues",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "no_difficulty",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "bias_only",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    }
+  ],
+  "variants": [
+    {
+      "setting": "linucb",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "lin_ts",
+      "mean_reward": 0.823196944670751,
+      "mean_quality": 0.9514285714285714,
+      "mean_cost": 1.7658495238095238,
+      "mean_latency_ms": 5343.381877865468,
+      "regret": 12.031664629865148,
+      "share": {
+        "qwen3-4b": 0.8800000000000001,
+        "qwen3-8b": 0.032380952380952385,
+        "qwen3-14b": 0.08761904761904762
+      }
+    },
+    {
+      "setting": "eps_greedy",
+      "mean_reward": 0.8102211691874075,
+      "mean_quality": 0.9485714285714286,
+      "mean_cost": 1.8866609523809523,
+      "mean_latency_ms": 5476.248328835964,
+      "regret": 14.756577481367254,
+      "share": {
+        "qwen3-4b": 0.7561904761904762,
+        "qwen3-8b": 0.21047619047619048,
+        "qwen3-14b": 0.03333333333333333
+      }
+    },
+    {
+      "setting": "sw_linucb",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    },
+    {
+      "setting": "rule_based",
+      "mean_reward": 0.838150483569225,
+      "mean_quality": 0.9476190476190476,
+      "mean_cost": 1.4228952380952382,
+      "mean_latency_ms": 5371.21012698543,
+      "regret": 8.891421461185605,
+      "share": {
+        "qwen3-4b": 1.0,
+        "qwen3-8b": 0.0,
+        "qwen3-14b": 0.0
+      }
+    }
+  ]
+}
