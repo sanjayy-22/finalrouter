@@ -183,7 +183,7 @@ for item in C.BODY:
     else:
         raise ValueError(k)
 
-parts.append('<w:p><w:pPr><w:spacing w:before="100" w:after="40"/><w:jc w:val="center"/></w:pPr>'
+parts.append('<w:p><w:pPr><w:keepNext/><w:spacing w:before="100" w:after="40"/><w:jc w:val="center"/></w:pPr>'
              f'<w:r><w:rPr>{FONT}<w:b/><w:sz w:val="16"/></w:rPr><w:t>REFERENCES</w:t></w:r></w:p>')
 for key, n in sorted(order.items(), key=lambda kv: kv[1]):
     parts.append('<w:p><w:pPr><w:spacing w:before="0" w:after="20" w:line="240" w:lineRule="auto"/>'
