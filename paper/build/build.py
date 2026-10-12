@@ -159,16 +159,25 @@ for el in els:
             "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
         fig_xml[{"rId9": 1, "rId10": 2, "rId11": 3}[rid]] = _xml(el)
 
-# Figures span both columns as a frame pinned to the top of the page; text flows below it,
-# so a figure that does not fit never leaves a blank band (no section breaks around figures).
-FRAME = ('<w:framePr w:w="10123" w:vSpace="160" w:wrap="notBeside" w:vAnchor="margin" w:hAnchor="margin" '
-         'w:xAlign="center" w:yAlign="top"/>')
+# Figures span both columns as a borderless floating table pinned to the top of the page.
+# It is taken out of the text flow, so the text keeps filling every column and a figure
+# that does not fit never leaves a blank band; the caption stays real text in the same table.
+NOBORDER = ('<w:tblBorders>' + "".join(f'<w:{s} w:val="nil"/>' for s in
+            ("top", "left", "bottom", "right", "insideH", "insideV")) + '</w:tblBorders>')
 
 def fig(n, cap):
     run = re.search(r"<w:r>.*?<w:drawing>.*?</w:drawing></w:r>", fig_xml[n], re.S).group(0)
-    return (f'<w:p><w:pPr><w:keepNext/>{FRAME}<w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>{run}</w:p>'
-            f'<w:p><w:pPr>{FRAME}<w:spacing w:before="40" w:after="0"/><w:jc w:val="center"/></w:pPr>'
-            + runs(cap, 16) + '</w:p>')
+    w = 10123
+    cellp = '<w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>'
+    return (f'<w:tbl><w:tblPr><w:tblpPr w:leftFromText="0" w:rightFromText="0" w:topFromText="0" '
+            f'w:bottomFromText="200" w:vertAnchor="margin" w:horzAnchor="margin" w:tblpXSpec="center" '
+            f'w:tblpYSpec="top"/><w:tblOverlap w:val="never"/><w:tblW w:type="dxa" w:w="{w}"/>{NOBORDER}'
+            '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/>'
+            f'</w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="{w}"/></w:tblGrid>'
+            f'<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:tcPr><w:tcW w:type="dxa" w:w="{w}"/></w:tcPr>'
+            f'<w:p>{cellp}{run}</w:p>'
+            f'<w:p><w:pPr><w:spacing w:before="40" w:after="0"/><w:jc w:val="center"/></w:pPr>{runs(cap, 16)}</w:p>'
+            '</w:tc></w:tr></w:tbl>')
 
 # ---------- assemble ----------
 parts = []
