@@ -159,15 +159,20 @@ for el in els:
             "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
         fig_xml[{"rId9": 1, "rId10": 2, "rId11": 3}[rid]] = _xml(el)
 
-# Figures span both columns as a frame pinned to the top of the page; text flows below it,
-# so a figure that does not fit never leaves a blank band (no section breaks around figures).
-FRAME = ('<w:framePr w:w="10123" w:vSpace="160" w:wrap="notBeside" w:vAnchor="margin" w:hAnchor="margin" '
-         'w:xAlign="center" w:yAlign="top"/>')
+# Figures are one column wide and sit inline in the text flow, like the tables, so every viewer
+# lays them out the same way and no full-width object can push text off a page.
+import struct
+COL_EMU = 4824 * 635                      # one column (4824 twips) in EMU
 
 def fig(n, cap):
     run = re.search(r"<w:r>.*?<w:drawing>.*?</w:drawing></w:r>", fig_xml[n], re.S).group(0)
-    return (f'<w:p><w:pPr><w:keepNext/>{FRAME}<w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>{run}</w:p>'
-            f'<w:p><w:pPr>{FRAME}<w:spacing w:before="40" w:after="0"/><w:jc w:val="center"/></w:pPr>'
+    with open(f"{D}/word/media/image{n}.png", "rb") as fh:
+        w_px, h_px = struct.unpack(">II", fh.read(24)[16:24])
+    cy = round(COL_EMU * h_px / w_px)
+    run = re.sub(r'(<wp:extent|<a:ext) cx="\d+" cy="\d+"', lambda m: f'{m.group(1)} cx="{COL_EMU}" cy="{cy}"', run)
+    run = run.replace("<wp:anchor", "<wp:inline")  # always inline
+    return ('<w:p><w:pPr><w:keepNext/><w:spacing w:before="80" w:after="0"/><w:jc w:val="center"/></w:pPr>'
+            f'{run}</w:p><w:p><w:pPr><w:spacing w:before="40" w:after="80"/><w:jc w:val="center"/></w:pPr>'
             + runs(cap, 16) + '</w:p>')
 
 # ---------- assemble ----------

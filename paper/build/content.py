@@ -96,8 +96,12 @@ BODY = [
       "(unit tests, e.g., HumanEval {humaneval}), and summarization, writing, information extraction, and instruction "
       "following (rubric scores from a validated judge, field-level match, or constraint checks). The pilot reported "
       "here covers the reasoning category only: 300 problems sampled with seed 0 from the official GSM8K test split "
-      "{gsm8k}, divided into 90 development and 210 held-out test queries. Quality is 1 when the final numeric answer "
-      "matches the reference and 0 otherwise; the scorer reproduces all 1,319 GSM8K reference answers. Every query is "
+      "{gsm8k}, divided into 90 development and 210 held-out test queries. Every problem uses the same prompt: "
+      "solve the word problem, reason step by step, and give the final answer on the last line in the form "
+      "'#### <number>'. The numeric scorer takes the number after the last '####' marker, or the last number in the "
+      "response if the marker is missing, removes thousands separators, and accepts it when it matches the reference "
+      "within a relative tolerance of 10⁻⁶. Quality is 1 for a match and 0 otherwise; applied to the reference "
+      "solutions themselves, the scorer reproduces all 1,319 GSM8K test answers. Every query is "
       "run on every model (900 outcomes), and each outcome logs the response, latency, input and output tokens, cost, "
       "failure status, and quality."),
 
@@ -106,10 +110,14 @@ BODY = [
       "the response, the response is evaluated, a reward is computed, and the chosen model's statistics are updated "
       "before the next query."),
 ("H2", "A. Query Features"),
-("P", "The context x_t has d = 12 entries computed before generation: log prompt length, a one-hot indicator over the "
-      "seven task categories, a code-content indicator, a reasoning-cue indicator, a difficulty estimate, and a constant "
-      "bias. A low-dimensional sentence embedding {sbert} is an optional extension. The contribution of each group is "
-      "measured by ablation (E4)."),
+("P", "The context x_t has d = 12 entries computed before generation. The length feature is "
+      "log(1 + n)/log(1 + 2048), clipped to 1, where n approximates the prompt's token count as 1.3 times its word "
+      "count. Seven entries form a one-hot indicator of the task category. Two binary cues come from regular "
+      "expressions: a code cue (code fences, function or class definitions, imports, stack traces) and a "
+      "reasoning cue (phrases such as 'step by step', 'solve', 'how many', 'prove', or 'explain'). The difficulty "
+      "entry is a per-category prior, one minus the smallest model's mean development accuracy in that category. A "
+      "constant bias completes the vector. A low-dimensional sentence embedding {sbert} is an optional extension. The "
+      "contribution of each group is measured by ablation (E4)."),
 ("H2", "B. LinUCB Scoring and Update"),
 ("P", "Disjoint LinUCB {lics} keeps for each model a a d×d matrix A_a and a vector b_a, initialized as"),
 ("EQ", "A_a = λ·I_d,   b_a = 0_d", 3),
@@ -119,7 +127,8 @@ BODY = [
       "has little experience with similar contexts for that model, scaled by α. The router selects a_t = argmax_a p_a "
       "and, after observing r_t, updates only the chosen model:"),
 ("EQ", "A_a ← A_a + x_t x_tᵀ,   b_a ← b_a + r_t x_t   (a = a_t)", 5),
-("FIG", 1, "Fig. 1. Proposed adaptive LLM routing loop with contextual-bandit feedback."),
+("FIG", 1, "Fig. 1. Proposed adaptive LLM routing loop with contextual-bandit feedback (dashed: the updated "
+        "statistics drive future routing decisions)."),
 ("H2", "C. Reward Function"),
 ("P", "The reward combines the competing objectives as"),
 ("EQ", "R = α_q · Q − β_c · C̃ − γ_l · L̃", 6),
@@ -147,6 +156,12 @@ BODY = [
       "bandit variants (linear Thompson sampling, ε-greedy ridge regression with ε = 0.1, and sliding-window LinUCB "
       "with a window of 200). Workload shift (E5) and multi-category analysis (E3) require more than one task category "
       "and are left to the full study."),
+("P", "The pilot is run by one script. For each model in turn it starts a vLLM server with a 4,096-token context "
+      "and 90% GPU-memory utilization, polls the server until it answers, sends all 300 problems through the "
+      "collector, and stops the server so that the next model has the whole GPU. The collector writes one record "
+      "per query-model pair and skips pairs that are already logged, so an interrupted run resumes where it "
+      "stopped. When all three models are done, the script runs the replay comparison with seeds 0-4 and writes "
+      "the tables and reward traces used in Section VI."),
 ("H1", "VI. Results and Analysis"),
 ("H2", "A. Per-Model Outcomes"),
 ("P", "Table I summarizes the 900 logged outcomes (300 problems × 3 models); latency, output tokens, and cost are "
@@ -219,8 +234,28 @@ BODY = [
       "and the effect is not monotone (α = 0.5 is worse than α = 1.0), reflecting seed-to-seed variation on a small "
       "test set. Feature ablation (E4, RQ1): removing length, category, cue, or difficulty features, or keeping only "
       "the bias term, leaves every metric unchanged (mean reward 0.838), so on a single-category workload the features "
-      "carry no routing signal. Bandit variants: sliding-window LinUCB equals LinUCB on this stationary stream, while "
+      "carry no routing signal. The reason is visible in the inputs: the shared prompt template contains 'solve' and "
+      "'step by step', so the reasoning cue is 1 for all 300 prompts; the code cue fires on only 5; the category "
+      "one-hot is constant; and the difficulty prior is a single value (0.133, from Qwen3-4B's 86.7% development "
+      "accuracy). Prompt length is the only feature that varies, and it does not separate the problems the small "
+      "model gets wrong. Bandit variants: sliding-window LinUCB equals LinUCB on this stationary stream, while "
       "linear Thompson sampling and ε-greedy explore more and lose 0.015 and 0.028 mean reward."),
+
+("H2", "D. Headroom and Learning Dynamics"),
+("P", "How much could any router gain on this data? The per-query oracle, which picks the model with the highest "
+      "logged reward for each test problem, reaches a cumulative reward of 184.9, only 8.9 (5.1%) above small-only "
+      "routing. It does so by sending 195 problems to Qwen3-4B, 13 to Qwen3-8B, and 2 to Qwen3-14B, which yields "
+      "99.5% accuracy at a cost of 1.54 per request. A cost-first oracle that calls the cheapest model that answers "
+      "correctly reaches the same 99.5% at 1.51 per request, using Qwen3-4B for 200 problems, Qwen3-8B for 9, and "
+      "Qwen3-14B for 1. The gap between 94.8% and 99.5% accuracy is therefore real and cheap to close in hindsight, "
+      "but closing it requires knowing in advance which 10 problems the small model will miss."),
+("P", "The warm-up phase shows how LinUCB arrives at its choice. With α = 1.0, the router spent the 90 development "
+      "queries on Qwen3-4B 49 times, Qwen3-14B 27 times, and Qwen3-8B 14 times, while the mean development rewards "
+      "of the three models were 0.748, 0.692, and 0.644 for the 4B, 8B, and 14B models. Averaged over the test "
+      "queries, the learned estimate θ_aᵀx is 0.758 for Qwen3-4B against 0.605 and 0.633 for the larger models, and "
+      "the exploration bonuses are 0.166, 0.284, and 0.213. The bonus of the less-tried models narrows but does not "
+      "close the gap in estimated reward, so the 4B model wins almost every comparison, and the remaining 1.8% of "
+      "larger-model calls are the bonus occasionally tipping a close decision."),
 
 ("H1", "VII. System Implementation"),
 ("P", "The router is implemented in Python as a small package with four parts. The router module holds the feature "
@@ -247,6 +282,18 @@ BODY = [
       "(0.002 reward per query). The situations in which per-query routing should pay off, namely several task "
       "categories with different best models and features that predict when the small model fails, are absent from "
       "this pilot by construction."),
+("P", "The size of the required accuracy gain makes this concrete. Because quality enters the reward with weight 1, "
+      "the mean reward of a model equals its accuracy minus its mean cost and latency penalty. On the held-out "
+      "split that penalty is 0.110 for Qwen3-4B, 0.216 for Qwen3-8B, and 0.286 for Qwen3-14B. A larger model "
+      "therefore breaks even with the small one only if it is more accurate by the difference: 10.7 percentage "
+      "points for Qwen3-8B and 17.7 points for Qwen3-14B. The measured gains are 0.9 and 0.4 points. On harder "
+      "categories such as multi-step coding, where small models fail far more often, gaps of this size are "
+      "plausible, which is why the full evaluation is needed before judging the method."),
+("P", "The replay protocol also deserves a caveat. Because decoding is greedy with a fixed seed, a model's answer to "
+      "a problem is the same whether it is called during collection or during an online run, so replaying the "
+      "logged outcome reproduces the quality an online router would see. Latency is different: it depends on "
+      "server load and on which other requests are in flight, so the replayed latencies describe a lightly loaded "
+      "single-GPU server rather than a production deployment."),
 ("P", "The limitations follow directly. The pilot covers one dataset, one task category, and 210 test queries, so "
       "accuracy differences of under one point are within noise and the per-category analysis (E3), workload shift "
       "(E5), and the effect of the category features cannot yet be assessed. Cost is a token-based proxy rather than "

@@ -24,28 +24,28 @@ def label(ax, x, y, t, fs=14, it=True):
     ax.text(x, y, t, ha="center", va="center", fontsize=fs, style="italic" if it else "normal",
             bbox=dict(fc="white", ec="none", pad=1))
 
-# ---------- Fig. 1: routing / feedback loop ----------
-f, ax = fig(1500, 850)
-box(ax, 60, 60, 330, 100, "Incoming User Query", bold=True, fs=19)
-box(ax, 60, 240, 330, 110, "Query / Context\nFeature Extraction  x_t")
-box(ax, 60, 430, 330, 120, "LinUCB Router\nscore = θᵀx + α·√(xᵀA⁻¹x)")
-box(ax, 505, 400, 450, 180, "")
-ax.text(730, 425, "Candidate LLM Pool (vLLM)", ha="center", va="center", fontsize=16, fontweight="bold")
-box(ax, 520, 455, 135, 95, "Small\nQwen3-4B", fs=14)
-box(ax, 665, 455, 135, 95, "Medium\nQwen3-8B", fs=14)
-box(ax, 810, 455, 135, 95, "Large\nQwen3-14B", fs=14)
-box(ax, 1070, 430, 370, 120, "Response + Measurements\nlatency, tokens, errors")
-box(ax, 1070, 240, 370, 110, "Evaluation & Feedback\nchecks, judge, user rating")
-box(ax, 1070, 60, 370, 100, "Reward Calculator\nR = α_q·Q − β_c·C − γ_l·L")
-box(ax, 520, 60, 420, 100, "Update Statistics of Chosen Model\nA_a ← A_a + x xᵀ,   b_a ← b_a + R x")
-box(ax, 60, 680, 1380, 100, "Response returned to user  ·  every decision, outcome, reward and update written to audit log", fs=16)
-arrow(ax, (225, 160), (225, 240)); arrow(ax, (225, 350), (225, 430))
-arrow(ax, (390, 490), (505, 490)); label(ax, 447, 465, "select a_t", fs=13)
-arrow(ax, (955, 490), (1070, 490))
-arrow(ax, (1255, 430), (1255, 350)); arrow(ax, (1255, 240), (1255, 160))
-arrow(ax, (1070, 110), (940, 110))
-arrow(ax, (600, 160), (360, 430), ls="--"); label(ax, 545, 300, "improved future\nrouting", fs=13)
-arrow(ax, (1255, 550), (1255, 680))
+# ---------- Fig. 1: routing / feedback loop (one-column layout) ----------
+f, ax = fig(1000, 1130)
+L, R, W = 25, 535, 440
+box(ax, L, 30, W, 110, "Incoming User Query", bold=True, fs=27)
+box(ax, L, 215, W, 130, "Query / Context\nFeature Extraction  x_t", fs=26)
+box(ax, L, 420, W, 140, "LinUCB Router\nscore = θᵀx + α·√(xᵀA⁻¹x)", fs=26)
+box(ax, L, 640, W, 230, "")
+ax.text(L + W/2, 680, "Candidate LLM Pool (vLLM)", ha="center", va="center", fontsize=22, fontweight="bold")
+for k, (nm, sz) in enumerate([("Small", "4B"), ("Medium", "8B"), ("Large", "14B")]):
+    box(ax, L + 15 + k*140, 720, 130, 130, f"{nm}\nQwen3-\n{sz}", fs=21)
+box(ax, R, 30, W, 150, "Update Chosen Model\nA_a ← A_a + x xᵀ\nb_a ← b_a + R x", fs=23)
+box(ax, R, 250, W, 130, "Reward Calculator\nR = α_q·Q − β_c·C − γ_l·L", fs=22)
+box(ax, R, 450, W, 130, "Evaluation & Feedback\nchecks, judge, user rating", fs=24)
+box(ax, R, 670, W, 130, "Response + Measurements\nlatency, tokens, errors", fs=24)
+box(ax, L, 960, 950, 130, "Response returned to user; every decision, outcome,\nreward and update written to the audit log", fs=23)
+arrow(ax, (L + W/2, 140), (L + W/2, 215)); arrow(ax, (L + W/2, 345), (L + W/2, 420))
+arrow(ax, (L + W/2, 560), (L + W/2, 640)); label(ax, L + W/2 + 75, 600, "select a_t", fs=20)
+arrow(ax, (L + W, 735), (R, 735))
+arrow(ax, (R + W/2, 670), (R + W/2, 580)); arrow(ax, (R + W/2, 450), (R + W/2, 380))
+arrow(ax, (R + W/2, 250), (R + W/2, 180))
+arrow(ax, (R, 150), (L + W, 470), ls="--")   # dashed: statistics feed future routing decisions
+arrow(ax, (R + W/2, 800), (R + W/2, 960))
 f.savefig(f"{out}/image1.png"); plt.close(f)
 
 # ---------- Fig. 2: evaluation design ----------
@@ -72,9 +72,9 @@ res_path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os
                                                               "../../results/gsm8k_pilot_models_4090/results.json")
 R = json.load(open(res_path))
 P = R["policies"]
-plt.rcParams.update({"font.family": "serif", "font.size": 19})
-f = plt.figure(figsize=(15, 7.2), dpi=100)
-axa = f.add_axes([0.065, 0.14, 0.42, 0.74]); axb = f.add_axes([0.575, 0.14, 0.41, 0.74])
+plt.rcParams.update({"font.family": "serif", "font.size": 22})
+f = plt.figure(figsize=(10, 12.4), dpi=100)
+axa = f.add_axes([0.13, 0.585, 0.83, 0.375]); axb = f.add_axes([0.13, 0.07, 0.83, 0.375])
 style = {"small_only": ("Small-only (= rule-based)", "-", "0.0", 2.6),
          "large_only": ("Large-only", "--", "0.0", 2.2),
          "random": ("Random", ":", "0.0", 2.6),
@@ -86,10 +86,10 @@ for k in ("linucb", "small_only", "large_only", "random"):
     if k != "small_only":   # small-only ends next to LinUCB; both values go on one label
         txt = f"{cum[-1]:.1f}" if k != "linucb" else \
             f"{np.sum(R['reward_traces']['small_only']):.1f} / {cum[-1]:.1f}"
-        axa.text(len(cum) + 3, cum[-1], txt, va="center", fontsize=15)
-axa.set_xlim(0, 262); axa.set_xlabel("Held-out query index (mean over 5 seeds)"); axa.set_ylabel("Cumulative reward")
+        axa.text(len(cum) + 3, cum[-1], txt, va="center", fontsize=18)
+axa.set_xlim(0, 285); axa.set_xlabel("Held-out query index (mean over 5 seeds)"); axa.set_ylabel("Cumulative reward")
 axa.set_title("(a) Cumulative reward on the test stream", fontsize=19)
-axa.legend(loc="upper left", frameon=False, fontsize=16)
+axa.legend(loc="lower right", frameon=False, fontsize=22)
 for sp in ("top", "right"): axa.spines[sp].set_visible(False); axb.spines[sp].set_visible(False)
 axa.grid(axis="y", color="0.85", lw=0.8)
 pts = [("small_only", "Small-only /\nrule-based", "o", (12, -38)), ("large_only", "Large-only", "s", (-60, 18)),
@@ -99,9 +99,9 @@ for k, lab, mk, off in pts:
     xe = P[k]["mean_cost"]["std"]; ye = 100 * P[k]["mean_quality"]["std"]
     axb.errorbar(x, y, xerr=xe, yerr=ye, fmt=mk, ms=13, color="0.0" if k != "linucb" else "0.45",
                  mec="black", capsize=4, lw=1.4)
-    axb.annotate(lab, (x, y), xytext=off, textcoords="offset points", fontsize=16)
+    axb.annotate(lab, (x, y), xytext=off, textcoords="offset points", fontsize=19)
 axb.set_xlim(1.0, 5.2); axb.set_ylim(93.5, 96.5)
 axb.set_xlabel("Cost per request (token-based proxy)"); axb.set_ylabel("Accuracy on held-out split (%)")
-axb.set_title("(b) Accuracy versus cost per request", fontsize=19)
+axb.set_title("(b) Accuracy versus cost per request", fontsize=22)
 axb.grid(color="0.85", lw=0.8)
 f.savefig(f"{out}/image3.png"); plt.close(f)
