@@ -13,7 +13,7 @@ IEEE-format manuscript describing the LinUCB-based routing framework.
 
 ## Status
 
-Six pages: five pages of text and a sixth page that holds only the references. Figures are borderless floating tables pinned to the top of a page (out of the text flow) and the three results tables fit in one column, so no blank bands appear when content moves between pages. Section VI reports the GSM8K pilot (300 problems, 90 dev / 210 test; Qwen3-4B/8B/14B FP8 on one
+Six pages: five pages of text and a sixth page that holds only the references. Both figures and the three results tables are one column wide and sit inline in the text, so every viewer lays the pages out the same way and no full-width object can leave a blank band. Section VI reports the GSM8K pilot (300 problems, 90 dev / 210 test; Qwen3-4B/8B/14B FP8 on one
 RTX 4090; 5 seeds). Numbers come from `results/gsm8k_pilot_models_4090/` (`tables.md`, `results.json`,
 `sweeps/sweeps.md`) and per-model statistics from `data/outcomes_gsm8k_models_4090.jsonl`. Only the reasoning
 category has been run, so per-category (E3) and workload-shift (E5) results are not reported yet.

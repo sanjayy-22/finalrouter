@@ -159,25 +159,21 @@ for el in els:
             "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
         fig_xml[{"rId9": 1, "rId10": 2, "rId11": 3}[rid]] = _xml(el)
 
-# Figures span both columns as a borderless floating table pinned to the top of the page.
-# It is taken out of the text flow, so the text keeps filling every column and a figure
-# that does not fit never leaves a blank band; the caption stays real text in the same table.
-NOBORDER = ('<w:tblBorders>' + "".join(f'<w:{s} w:val="nil"/>' for s in
-            ("top", "left", "bottom", "right", "insideH", "insideV")) + '</w:tblBorders>')
+# Figures are one column wide and sit inline in the text flow, like the tables, so every viewer
+# lays them out the same way and no full-width object can push text off a page.
+import struct
+COL_EMU = 4824 * 635                      # one column (4824 twips) in EMU
 
 def fig(n, cap):
     run = re.search(r"<w:r>.*?<w:drawing>.*?</w:drawing></w:r>", fig_xml[n], re.S).group(0)
-    w = 10123
-    cellp = '<w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>'
-    return (f'<w:tbl><w:tblPr><w:tblpPr w:leftFromText="0" w:rightFromText="0" w:topFromText="0" '
-            f'w:bottomFromText="200" w:vertAnchor="margin" w:horzAnchor="margin" w:tblpXSpec="center" '
-            f'w:tblpYSpec="top"/><w:tblOverlap w:val="never"/><w:tblW w:type="dxa" w:w="{w}"/>{NOBORDER}'
-            '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/>'
-            f'</w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="{w}"/></w:tblGrid>'
-            f'<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:tcPr><w:tcW w:type="dxa" w:w="{w}"/></w:tcPr>'
-            f'<w:p>{cellp}{run}</w:p>'
-            f'<w:p><w:pPr><w:spacing w:before="40" w:after="0"/><w:jc w:val="center"/></w:pPr>{runs(cap, 16)}</w:p>'
-            '</w:tc></w:tr></w:tbl>')
+    with open(f"{D}/word/media/image{n}.png", "rb") as fh:
+        w_px, h_px = struct.unpack(">II", fh.read(24)[16:24])
+    cy = round(COL_EMU * h_px / w_px)
+    run = re.sub(r'(<wp:extent|<a:ext) cx="\d+" cy="\d+"', lambda m: f'{m.group(1)} cx="{COL_EMU}" cy="{cy}"', run)
+    run = run.replace("<wp:anchor", "<wp:inline")  # always inline
+    return ('<w:p><w:pPr><w:keepNext/><w:spacing w:before="80" w:after="0"/><w:jc w:val="center"/></w:pPr>'
+            f'{run}</w:p><w:p><w:pPr><w:spacing w:before="40" w:after="80"/><w:jc w:val="center"/></w:pPr>'
+            + runs(cap, 16) + '</w:p>')
 
 # ---------- assemble ----------
 parts = []
