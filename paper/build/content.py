@@ -80,19 +80,16 @@ BODY = [
       "computable only because every model is run on every query offline:"),
 ("EQ", "Reg(T) = Σ_{t=1..T} [ r_t(a*_t) − r_t(a_t) ]", 2),
 ("H2", "B. Candidate Model Pool"),
-("P", "The pool contains three Qwen3 models of different sizes {qwen3} (Table I). One family keeps tokenizer, prompt "
+("P", "The pool contains three Qwen3 models of different sizes {qwen3}: Qwen3-4B as the small model, Qwen3-8B as the "
+      "medium model, and Qwen3-14B as the large model, loaded from the official checkpoints Qwen/Qwen3-4B-FP8, "
+      "Qwen/Qwen3-8B-FP8, and Qwen/Qwen3-14B-FP8. One family keeps tokenizer, prompt "
       "format, and training recipe fixed, so differences are driven mainly by scale. All three are served with vLLM "
       "{vllm} through one OpenAI-compatible interface on a single NVIDIA RTX 4090 (24 GB). Because bf16 Qwen3-14B does "
       "not fit in 24 GB, Qwen's official FP8 checkpoints are used for all three models so precision is identical across "
       "the pool. Decoding is greedy (temperature 0, seed 0) with at most 1,024 output tokens, a 120 s timeout, and "
       "thinking mode disabled {qwen3}. The models are served one at a time. Cost is a compute proxy: the per-1k-token "
-      "rate in Table I times the request's input plus output tokens."),
-("TABLE", "I", "CANDIDATE MODEL POOL AS RUN IN THE PILOT",
-    ["Role", "Checkpoint", "Precision", "Serving / Hardware", "Cost Rate (per 1k tokens)", "Decoding"],
-    [["Small", "Qwen/Qwen3-4B-FP8", "FP8", "vLLM, 1× RTX 4090", "4.0", "T = 0, ≤1,024 tokens, no thinking"],
-     ["Medium", "Qwen/Qwen3-8B-FP8", "FP8", "vLLM, 1× RTX 4090", "8.0", "T = 0, ≤1,024 tokens, no thinking"],
-     ["Large", "Qwen/Qwen3-14B-FP8", "FP8", "vLLM, 1× RTX 4090", "14.0", "T = 0, ≤1,024 tokens, no thinking"]],
-    [900, 2100, 1000, 1900, 1500, 2723]),
+      "rate (4.0, 8.0, and 14.0 units per 1,000 tokens for the three sizes) times the request's input plus output "
+      "tokens, so larger models cost more for the same answer and longer answers cost more on any model."),
 ("H2", "C. Task Categories and Dataset"),
 ("P", "The full design covers seven categories with a quality signal for each: general question answering (exact "
       "match, e.g., MMLU {mmlu}), reasoning and multi-step problems (final-answer match, e.g., GSM8K {gsm8k}), coding "
@@ -108,7 +105,6 @@ BODY = [
 ("P", "Fig. 1 shows the loop: the query is converted into features, LinUCB scores each candidate, one model generates "
       "the response, the response is evaluated, a reward is computed, and the chosen model's statistics are updated "
       "before the next query."),
-("FIG", 1, "Fig. 1. Proposed adaptive LLM routing loop with contextual-bandit feedback."),
 ("H2", "A. Query Features"),
 ("P", "The context x_t has d = 12 entries computed before generation: log prompt length, a one-hot indicator over the "
       "seven task categories, a code-content indicator, a reasoning-cue indicator, a difficulty estimate, and a constant "
@@ -123,6 +119,7 @@ BODY = [
       "has little experience with similar contexts for that model, scaled by α. The router selects a_t = argmax_a p_a "
       "and, after observing r_t, updates only the chosen model:"),
 ("EQ", "A_a ← A_a + x_t x_tᵀ,   b_a ← b_a + r_t x_t   (a = a_t)", 5),
+("FIG", 1, "Fig. 1. Proposed adaptive LLM routing loop with contextual-bandit feedback."),
 ("H2", "C. Reward Function"),
 ("P", "The reward combines the competing objectives as"),
 ("EQ", "R = α_q · Q − β_c · C̃ − γ_l · L̃", 6),
@@ -132,32 +129,14 @@ BODY = [
       "timeouts receive Q = 0 with their measured cost and latency, so a cheap but unusable response cannot earn a high "
       "reward. Feedback can also come from user ratings or a judge model {judge}; judge scores are validated against "
       "manual inspection before use, and observations without a validated quality signal are excluded from updates."),
-("H2", "D. Operational Safeguards"),
-("P", "The router service handles timeouts, unavailable models, and malformed outputs explicitly, and writes every "
-      "decision (context, selected model, outcome, reward, update) to an audit log so that runs can be replayed. Any "
-      "fallback policy, such as retrying with a larger model, is evaluated and documented rather than silently "
-      "changing the experiment. Algorithm 1 summarizes the procedure."),
-("ALGO", "Algorithm 1. LinUCB-Based Adaptive LLM Routing", [
-    "1) For every candidate model a: initialize A_a = λI_d and b_a = 0_d.",
-    "2) For each incoming query q_t:",
-    "3)     Extract the context vector x_t = extract_features(q_t).",
-    "4)     For each model a: compute θ_a = A_a⁻¹b_a and p_a = θ_aᵀx_t + α√(x_tᵀA_a⁻¹x_t).",
-    "5)     Select a_t = argmax_a p_a; call model a_t; record latency, tokens, cost, and errors.",
-    "6)     Evaluate the response to obtain Q; compute r_t = α_q·Q − β_c·C̃ − γ_l·L̃ (failures: Q = 0).",
-    "7)     For a = a_t only: A_a ← A_a + x_t x_tᵀ and b_a ← b_a + r_t x_t; log the decision."]),
-
 ("H1", "V. Experimental Setup"),
-("P", "LinUCB is compared with four policies that use the same pool, prompts, and reward (Table II). The rule-based "
-      "policy maps each task category to the model with the highest mean development reward."),
-("TABLE", "II", "ROUTING POLICIES COMPARED",
-    ["Policy", "Decision Rule", "Learns from Feedback"],
-    [["Small-only", "Always select Qwen3-4B", "No"],
-     ["Large-only", "Always select Qwen3-14B", "No"],
-     ["Random", "Select a model uniformly at random (seeded)", "No"],
-     ["Rule-based", "Category → best model on the development split", "No"],
-     ["LinUCB (proposed)", "Select argmax of Eq. (4); update with Eq. (5)", "Yes"]],
-    [2400, 5523, 2200]),
-("P", "The evaluation follows Fig. 2. Because every query is run on every model, each policy is replayed on the same "
+("P", "LinUCB is compared with four non-learning policies that share its pool, prompts, and reward. Small-only always "
+      "calls Qwen3-4B and large-only always calls Qwen3-14B; together they bracket the cheapest and the most capable "
+      "fixed choice. Random routing picks one of the three models uniformly with a seeded generator and shows what an "
+      "uninformed mix costs. The rule-based policy maps each task category to the model with the highest mean "
+      "development reward, which is the strongest simple policy a practitioner could write by hand. None of these "
+      "policies updates from feedback; LinUCB selects with Eq. (4) and updates with Eq. (5)."),
+("P", "Because every query is run on every model, each policy is replayed on the same "
       "query stream and sees only the logged outcome of the model it selects; this also makes the oracle in Eq. (2) "
       "computable {replay}. Learning policies are first warmed up on the 90 development queries (unscored) and then "
       "evaluated on the 210 held-out queries. Each policy is run with five seeds (0-4) that change the query order and "
@@ -168,11 +147,9 @@ BODY = [
       "bandit variants (linear Thompson sampling, ε-greedy ridge regression with ε = 0.1, and sliding-window LinUCB "
       "with a window of 200). Workload shift (E5) and multi-category analysis (E3) require more than one task category "
       "and are left to the full study."),
-("FIG", 2, "Fig. 2. Evaluation design: full-information logging, replay-based policy comparison, and held-out reporting."),
-
 ("H1", "VI. Results and Analysis"),
 ("H2", "A. Per-Model Outcomes"),
-("P", "Table III summarizes the 900 logged outcomes on the held-out split. No request failed or timed out. The three "
+("P", "Table I summarizes the 900 logged outcomes (300 problems × 3 models). No request failed or timed out. The three "
       "models are close in accuracy: Qwen3-8B is highest at 95.7%, Qwen3-14B reaches 95.2%, and Qwen3-4B 94.8%, a gap "
       "of one to two problems out of 210. Cost per request, by contrast, is 2.2 and 3.3 times higher for the 8B and "
       "14B models. Latency does not follow size: the 14B model produced the shortest answers (231 output tokens on "
@@ -180,14 +157,21 @@ BODY = [
       "length than by parameter count. The development split is harder for the small model (86.7% versus 92.2% and "
       "94.4%), a reminder that 90 queries give noisy estimates. On the test split at least one model is correct on "
       "209 of 210 problems; Qwen3-4B is wrong but a larger model is right on 10 of them."),
-("TABLE", "III", "PER-MODEL OUTCOMES ON GSM8K (DEV n = 90, TEST n = 210) AND LINUCB SELECTION SHARE ON TEST",
+("P", "The errors overlap little. Of the 11, 9, and 10 test problems missed by the 4B, 8B, and 14B models, only one is "
+      "missed by all three, and 5, 7, and 5 are missed by one model alone. Wrong answers are longer than right ones "
+      "for every model (355 versus 245 output tokens for Qwen3-4B and 456 versus 272 for Qwen3-8B), and only one "
+      "response, from the 4B model, reached the 1,024-token limit. Decoding speed is nearly constant across sizes at "
+      "21 to 23 ms per output token on the FP8 checkpoints, which explains why latency tracks answer length. A router "
+      "could exploit these patterns only with features that predict an individual model's failure before generation; "
+      "the length, category, and cue features used here do not, which the ablation below confirms."),
+("TABLE", "I", "PER-MODEL OUTCOMES ON GSM8K (DEV n = 90, TEST n = 210) AND LINUCB SELECTION SHARE ON TEST",
     ["Model", "Accuracy Dev / Test", "Mean Latency (ms, test)", "Mean Output Tokens (test)", "Cost / Request (test)", "LinUCB Share (test)"],
     [["Qwen3-4B", "0.867 / 0.948", "5,371", "251", "1.423", "0.982"],
      ["Qwen3-8B", "0.922 / 0.957", "5,831", "280", "3.075", "0.012"],
      ["Qwen3-14B", "0.944 / 0.952", "5,235", "231", "4.706", "0.006"]],
     [1500, 1700, 1700, 1700, 1700, 1823]),
 ("H2", "B. Overall Comparison (E1)"),
-("TABLE", "IV", "OVERALL POLICY COMPARISON ON THE HELD-OUT SPLIT (210 QUERIES, MEAN ± SD OVER 5 SEEDS)",
+("TABLE", "II", "OVERALL POLICY COMPARISON ON THE HELD-OUT SPLIT (210 QUERIES, MEAN ± SD OVER 5 SEEDS)",
     ["Policy", "Mean Quality", "Mean Latency (ms)", "p95 Latency (ms)", "Cost / Request", "Failure Rate", "Cumulative Reward", "Regret"],
     [["Small-only", "0.948 ± 0.000", "5371 ± 0", "9290 ± 0", "1.423 ± 0.000", "0.000", "176.0 ± 0.0", "8.9 ± 0.0"],
      ["Large-only", "0.952 ± 0.000", "5235 ± 0", "8297 ± 0", "4.706 ± 0.000", "0.000", "139.9 ± 0.0", "45.0 ± 0.0"],
@@ -195,9 +179,9 @@ BODY = [
      ["Rule-based", "0.948 ± 0.000", "5371 ± 0", "9290 ± 0", "1.423 ± 0.000", "0.000", "176.0 ± 0.0", "8.9 ± 0.0"],
      ["LinUCB (proposed)", "0.948 ± 0.000", "5359 ± 28", "9273 ± 39", "1.460 ± 0.009", "0.000", "175.6 ± 0.1", "9.3 ± 0.1"]],
     [1723, 1200, 1200, 1200, 1200, 1200, 1200, 1200]),
-("P", "Table IV reports the main comparison. Under the default weights the cost and latency penalties outweigh the small "
+("P", "Table II and Fig. 2 report the main comparison. Under the default weights the cost and latency penalties outweigh the small "
       "accuracy gains of the larger models, so the 4B model is the best fixed choice. LinUCB learns this: it routes "
-      "98.2% of test queries to Qwen3-4B (Table III), reaches the same mean quality (0.948), and costs 1.460 per request, "
+      "98.2% of test queries to Qwen3-4B (Table I), reaches the same mean quality (0.948), and costs 1.460 per request, "
       "69% less than large-only routing (4.706) at 0.4 percentage points lower accuracy. Its cumulative reward of "
       "175.6 ± 0.1 is 35.7 higher than large-only and 20.4 higher than random routing. It does not beat small-only or "
       "rule-based routing (176.0); its residual exploration of the larger models (1.8% of queries) costs 0.4 reward "
@@ -206,8 +190,9 @@ BODY = [
       "best fixed policy because, with binary quality, the oracle also knows which model happened to be right on each "
       "problem. RQ2 is therefore answered negatively for this workload: LinUCB matches but does not exceed the best "
       "fixed policy, which is expected when one model dominates and no context separates the queries."),
-("H2", "C. Reward Weights, Exploration, Features, and Variants"),
-("TABLE", "V", "SWEEPS ON THE HELD-OUT SPLIT (LINUCB UNLESS STATED; MEAN OVER 5 SEEDS)",
+("FIG", 3, "Fig. 2. GSM8K pilot on the held-out split: (a) cumulative reward of each policy over the 210-query stream; "
+        "(b) accuracy versus cost per request (error bars: SD over 5 seeds)."),
+("TABLE", "III", "SWEEPS ON THE HELD-OUT SPLIT (LINUCB UNLESS STATED; MEAN OVER 5 SEEDS)",
     ["Setting", "Mean Reward", "Mean Quality", "Cost / Request", "Regret", "Share 4B / 8B / 14B"],
     [["E2: β_c = 0, γ_l = 0", "0.948", "0.948", "1.423", "10.0", "1.00 / 0.00 / 0.00"],
      ["E2: β_c = 0.1, γ_l = 0.05", "0.918", "0.948", "1.423", "9.6", "1.00 / 0.00 / 0.00"],
@@ -222,7 +207,8 @@ BODY = [
      ["ε-greedy ridge (ε = 0.1)", "0.810", "0.949", "1.887", "14.8", "0.76 / 0.21 / 0.03"],
      ["Sliding-window LinUCB", "0.838", "0.948", "1.423", "8.9", "1.00 / 0.00 / 0.00"]],
     [2900, 1300, 1300, 1300, 1100, 2223]),
-("P", "Table V reports the sweeps. Reward weights (E2, RQ3): with no cost or latency penalty the best fixed policy is "
+("H2", "C. Reward Weights, Exploration, Features, and Variants"),
+("P", "Table III reports the sweeps. Reward weights (E2, RQ3): with no cost or latency penalty the best fixed policy is "
       "large-only (mean reward 0.952), yet LinUCB still selects only Qwen3-4B and reaches 0.948: initial score ties "
       "are broken toward the first model, and once Qwen3-4B has accumulated positive reward during warm-up the bonus "
       "at α = 0.25 is too small to try the larger models. For every non-zero weight setting small-only is "
@@ -235,7 +221,24 @@ BODY = [
       "carry no routing signal. Bandit variants: sliding-window LinUCB equals LinUCB on this stationary stream, while "
       "linear Thompson sampling and ε-greedy explore more and lose 0.015 and 0.028 mean reward."),
 
-("H1", "VII. Discussion and Limitations"),
+("H1", "VII. System Implementation"),
+("P", "The router is implemented in Python as a small package with four parts. The router module holds the feature "
+      "extractor, the disjoint LinUCB policy with its per-model A_a and b_a, the four baselines, and the reward "
+      "calculator. The evaluation module collects outcomes by sending every query to every model through vLLM's "
+      "OpenAI-compatible endpoint; collection is resumable, so an interrupted run continues from the last logged "
+      "pair. It also provides scorers for exact, multiple-choice, numeric, substring, unit-test, and judge-based "
+      "quality, and the replay engine that produces Tables I-III. The experiments module runs the sweeps and the three "
+      "bandit variants, and a unit-test suite covers the scorers, features, LinUCB updates, replay, and service."),
+("P", "For live use the same policy runs inside a FastAPI service. A POST to /route extracts features, scores the "
+      "three models, calls the selected one, and returns its answer together with a decision identifier and every "
+      "model's score; a failed or timed-out call is converted immediately into a zero-quality update. A POST to "
+      "/feedback attaches a quality rating to a pending decision and applies the LinUCB update, and GET /stats "
+      "exposes the update counts, the exploration coefficient, and the reward configuration. Each decision is "
+      "appended to an audit log with its context vector, model, latency, cost, quality, and reward, which allows any "
+      "routing choice to be reconstructed. A minimal web page lets a user type a query, see which model was chosen "
+      "and why, and rate the answer, and a demo mode exercises the routing and learning logic without a GPU."),
+
+("H1", "VIII. Discussion and Limitations"),
 ("P", "The pilot supports two conclusions. First, the reward definition, not the algorithm, decides the outcome: when "
       "larger models add one or two correct answers per 210 problems at two to three times the cost, any reasonable "
       "cost weight makes the small model the right choice, and a learned router can at best match it. Second, LinUCB "
@@ -252,7 +255,7 @@ BODY = [
       "LinUCB assumes stationary rewards, so drifting workloads may need sliding-window or discounted variants "
       "{garivier}, and judge-based rewards for open-ended categories must be validated before use {judge}."),
 
-("H1", "VIII. Conclusion and Future Work"),
+("H1", "IX. Conclusion and Future Work"),
 ("P", "This paper presented an adaptive LLM routing framework that formulates per-query model selection as a "
       "contextual-bandit problem and uses LinUCB to balance quality, latency, and cost without modifying the candidate "
       "models. In a GSM8K pilot with Qwen3-4B, 8B, and 14B on one RTX 4090, LinUCB learned to route 98.2% of queries to "
