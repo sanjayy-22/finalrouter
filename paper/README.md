@@ -17,7 +17,7 @@ Six pages; the reference list sits on page 6. The only tables are the three resu
 RTX 4090; 5 seeds). Numbers come from `results/gsm8k_pilot_models_4090/` (`tables.md`, `results.json`,
 `sweeps/sweeps.md`) and per-model statistics from `data/outcomes_gsm8k_models_4090.jsonl`. Only the reasoning
 category has been run, so per-category (E3) and workload-shift (E5) results are not reported yet.
-The author block still needs to be confirmed (`[Guide Email ID]`).
+The guide's email line was a placeholder and has been removed from the author block; add it back in Word if needed.
 
 ## Rebuilding after editing `content.py`
 
