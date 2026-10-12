@@ -149,7 +149,8 @@ BODY = [
       "and are left to the full study."),
 ("H1", "VI. Results and Analysis"),
 ("H2", "A. Per-Model Outcomes"),
-("P", "Table I summarizes the 900 logged outcomes (300 problems × 3 models). No request failed or timed out. The three "
+("P", "Table I summarizes the 900 logged outcomes (300 problems × 3 models); latency, output tokens, and cost are "
+      "held-out means. No request failed or timed out, so the failure rate is 0 for every policy. The three "
       "models are close in accuracy: Qwen3-8B is highest at 95.7%, Qwen3-14B reaches 95.2%, and Qwen3-4B 94.8%, a gap "
       "of one to two problems out of 210. Cost per request, by contrast, is 2.2 and 3.3 times higher for the 8B and "
       "14B models. Latency does not follow size: the 14B model produced the shortest answers (231 output tokens on "
@@ -164,21 +165,21 @@ BODY = [
       "21 to 23 ms per output token on the FP8 checkpoints, which explains why latency tracks answer length. A router "
       "could exploit these patterns only with features that predict an individual model's failure before generation; "
       "the length, category, and cue features used here do not, which the ablation below confirms."),
-("TABLE", "I", "PER-MODEL OUTCOMES ON GSM8K (DEV n = 90, TEST n = 210) AND LINUCB SELECTION SHARE ON TEST",
-    ["Model", "Accuracy Dev / Test", "Mean Latency (ms, test)", "Mean Output Tokens (test)", "Cost / Request (test)", "LinUCB Share (test)"],
-    [["Qwen3-4B", "0.867 / 0.948", "5,371", "251", "1.423", "0.982"],
-     ["Qwen3-8B", "0.922 / 0.957", "5,831", "280", "3.075", "0.012"],
-     ["Qwen3-14B", "0.944 / 0.952", "5,235", "231", "4.706", "0.006"]],
-    [1500, 1700, 1700, 1700, 1700, 1823]),
+("TABLE", "I", "PER-MODEL OUTCOMES ON GSM8K AND LINUCB SELECTION SHARE",
+    ["Model", "Acc. Dev / Test", "Latency (s)", "Output Tokens", "Cost / Req.", "LinUCB Share"],
+    [["Qwen3-4B", "0.867 / 0.948", "5.37", "251", "1.42", "0.982"],
+     ["Qwen3-8B", "0.922 / 0.957", "5.83", "280", "3.08", "0.012"],
+     ["Qwen3-14B", "0.944 / 0.952", "5.24", "231", "4.71", "0.006"]],
+    [880, 1064, 720, 720, 720, 720]),
 ("H2", "B. Overall Comparison (E1)"),
-("TABLE", "II", "OVERALL POLICY COMPARISON ON THE HELD-OUT SPLIT (210 QUERIES, MEAN ± SD OVER 5 SEEDS)",
-    ["Policy", "Mean Quality", "Mean Latency (ms)", "p95 Latency (ms)", "Cost / Request", "Failure Rate", "Cumulative Reward", "Regret"],
-    [["Small-only", "0.948 ± 0.000", "5371 ± 0", "9290 ± 0", "1.423 ± 0.000", "0.000", "176.0 ± 0.0", "8.9 ± 0.0"],
-     ["Large-only", "0.952 ± 0.000", "5235 ± 0", "8297 ± 0", "4.706 ± 0.000", "0.000", "139.9 ± 0.0", "45.0 ± 0.0"],
-     ["Random", "0.946 ± 0.009", "5464 ± 61", "8522 ± 349", "3.131 ± 0.102", "0.000", "155.2 ± 2.9", "29.7 ± 2.9"],
-     ["Rule-based", "0.948 ± 0.000", "5371 ± 0", "9290 ± 0", "1.423 ± 0.000", "0.000", "176.0 ± 0.0", "8.9 ± 0.0"],
-     ["LinUCB (proposed)", "0.948 ± 0.000", "5359 ± 28", "9273 ± 39", "1.460 ± 0.009", "0.000", "175.6 ± 0.1", "9.3 ± 0.1"]],
-    [1723, 1200, 1200, 1200, 1200, 1200, 1200, 1200]),
+("TABLE", "II", "POLICY COMPARISON ON THE HELD-OUT SPLIT (MEAN ± SD OVER 5 SEEDS)",
+    ["Policy", "Accuracy", "Latency Mean / p95 (s)", "Cost / Req.", "Cum. Reward", "Regret"],
+    [["Small-only", "0.948", "5.37 / 9.29", "1.42", "176.0", "8.9"],
+     ["Large-only", "0.952", "5.24 / 8.30", "4.71", "139.9", "45.0"],
+     ["Random", "0.946 ± 0.009", "5.46 / 8.52", "3.13 ± 0.10", "155.2 ± 2.9", "29.7 ± 2.9"],
+     ["Rule-based", "0.948", "5.37 / 9.29", "1.42", "176.0", "8.9"],
+     ["LinUCB", "0.948", "5.36 / 9.27", "1.46 ± 0.01", "175.6 ± 0.1", "9.3 ± 0.1"]],
+    [824, 880, 900, 760, 760, 700]),
 ("P", "Table II and Fig. 2 report the main comparison. Under the default weights the cost and latency penalties outweigh the small "
       "accuracy gains of the larger models, so the 4B model is the best fixed choice. LinUCB learns this: it routes "
       "98.2% of test queries to Qwen3-4B (Table I), reaches the same mean quality (0.948), and costs 1.460 per request, "
@@ -192,21 +193,21 @@ BODY = [
       "fixed policy, which is expected when one model dominates and no context separates the queries."),
 ("FIG", 3, "Fig. 2. GSM8K pilot on the held-out split: (a) cumulative reward of each policy over the 210-query stream; "
         "(b) accuracy versus cost per request (error bars: SD over 5 seeds)."),
-("TABLE", "III", "SWEEPS ON THE HELD-OUT SPLIT (LINUCB UNLESS STATED; MEAN OVER 5 SEEDS)",
-    ["Setting", "Mean Reward", "Mean Quality", "Cost / Request", "Regret", "Share 4B / 8B / 14B"],
-    [["E2: β_c = 0, γ_l = 0", "0.948", "0.948", "1.423", "10.0", "1.00 / 0.00 / 0.00"],
-     ["E2: β_c = 0.1, γ_l = 0.05", "0.918", "0.948", "1.423", "9.6", "1.00 / 0.00 / 0.00"],
-     ["E2: β_c = 0.3, γ_l = 0.2", "0.838", "0.948", "1.423", "8.9", "1.00 / 0.00 / 0.00"],
-     ["E2: β_c = 0.6, γ_l = 0.4", "0.687", "0.950", "1.759", "16.4", "0.80 / 0.20 / 0.00"],
-     ["E2: β_c = 1.0, γ_l = 0.6", "0.610", "0.948", "1.423", "6.2", "1.00 / 0.00 / 0.00"],
-     ["E6: α = 0, 0.1, 0.25", "0.838", "0.948", "1.423", "8.9", "1.00 / 0.00 / 0.00"],
-     ["E6: α = 0.5", "0.799", "0.951", "2.098", "17.2", "0.60 / 0.39 / 0.01"],
-     ["E6: α = 1.0", "0.836", "0.948", "1.460", "9.3", "0.98 / 0.01 / 0.01"],
-     ["E6: α = 2.0", "0.813", "0.953", "1.945", "14.2", "0.75 / 0.17 / 0.07"],
-     ["Linear Thompson sampling", "0.823", "0.951", "1.766", "12.0", "0.88 / 0.03 / 0.09"],
-     ["ε-greedy ridge (ε = 0.1)", "0.810", "0.949", "1.887", "14.8", "0.76 / 0.21 / 0.03"],
-     ["Sliding-window LinUCB", "0.838", "0.948", "1.423", "8.9", "1.00 / 0.00 / 0.00"]],
-    [2900, 1300, 1300, 1300, 1100, 2223]),
+("TABLE", "III", "SWEEPS ON THE HELD-OUT SPLIT (MEAN OVER 5 SEEDS)",
+    ["Setting", "Reward", "Acc.", "Cost", "Regret", "Share 4B/8B/14B"],
+    [["E2: β_c = 0, γ_l = 0", "0.948", "0.948", "1.42", "10.0", "1.00/0.00/0.00"],
+     ["E2: β_c = 0.1, γ_l = 0.05", "0.918", "0.948", "1.42", "9.6", "1.00/0.00/0.00"],
+     ["E2: β_c = 0.3, γ_l = 0.2", "0.838", "0.948", "1.42", "8.9", "1.00/0.00/0.00"],
+     ["E2: β_c = 0.6, γ_l = 0.4", "0.687", "0.950", "1.76", "16.4", "0.80/0.20/0.00"],
+     ["E2: β_c = 1.0, γ_l = 0.6", "0.610", "0.948", "1.42", "6.2", "1.00/0.00/0.00"],
+     ["E6: α = 0, 0.1, 0.25", "0.838", "0.948", "1.42", "8.9", "1.00/0.00/0.00"],
+     ["E6: α = 0.5", "0.799", "0.951", "2.10", "17.2", "0.60/0.39/0.01"],
+     ["E6: α = 1.0", "0.836", "0.948", "1.46", "9.3", "0.98/0.01/0.01"],
+     ["E6: α = 2.0", "0.813", "0.953", "1.95", "14.2", "0.75/0.17/0.07"],
+     ["Linear Thompson sampling", "0.823", "0.951", "1.77", "12.0", "0.88/0.03/0.09"],
+     ["ε-greedy ridge (ε = 0.1)", "0.810", "0.949", "1.89", "14.8", "0.76/0.21/0.03"],
+     ["Sliding-window LinUCB", "0.838", "0.948", "1.42", "8.9", "1.00/0.00/0.00"]],
+    [1500, 600, 600, 520, 560, 1044]),
 ("H2", "C. Reward Weights, Exploration, Features, and Variants"),
 ("P", "Table III reports the sweeps. Reward weights (E2, RQ3): with no cost or latency penalty the best fixed policy is "
       "large-only (mean reward 0.952), yet LinUCB still selects only Qwen3-4B and reaches 0.948: initial score ties "
@@ -255,15 +256,26 @@ BODY = [
       "LinUCB assumes stationary rewards, so drifting workloads may need sliding-window or discounted variants "
       "{garivier}, and judge-based rewards for open-ended categories must be validated before use {judge}."),
 
+("P", "For deployment, the pilot suggests a simple procedure. Before routing at all, run each candidate on a small "
+      "development sample and compute the reward of every fixed policy; if one model dominates under the chosen "
+      "weights, as Qwen3-4B does here, a fixed or rule-based choice is sufficient and a learned router mainly acts as "
+      "a safeguard that would notice if that stopped being true. LinUCB is worth its added state when the development "
+      "data show different best models for different kinds of queries, and in that case the exploration coefficient "
+      "should be kept small (α ≤ 1 in this pilot), because larger values spent up to 37% more cost for at most half a "
+      "point of accuracy. Because the router stores only a 12×12 matrix and a 12-dimensional vector per model, its "
+      "overhead is negligible next to a single LLM call, and its audit log makes every choice explainable."),
 ("H1", "IX. Conclusion and Future Work"),
 ("P", "This paper presented an adaptive LLM routing framework that formulates per-query model selection as a "
       "contextual-bandit problem and uses LinUCB to balance quality, latency, and cost without modifying the candidate "
       "models. In a GSM8K pilot with Qwen3-4B, 8B, and 14B on one RTX 4090, LinUCB learned to route 98.2% of queries to "
       "the smallest model, matched its 94.8% accuracy, and cut cost per request by 69% relative to large-only routing, "
       "but it did not exceed the small-only and rule-based baselines, which are near-optimal on a single-category "
-      "workload. Future work is to run the full seven-category evaluation with workload shift, add features that "
-      "predict small-model failures, measure GPU-time cost under concurrent load, compare budget-constrained routing "
-      "{pilot}, and evaluate non-stationary and neural bandit variants."),
+      "workload."),
+("P", "Future work follows from these limits. The next step is the full seven-category evaluation, which adds "
+      "MMLU-style question answering, HumanEval-style coding with unit tests, and judge-scored open-ended tasks, and "
+      "which makes the per-category analysis (E3) and a workload-shift run (E5) possible. Further steps are to add "
+      "features that predict when the small model will fail, to measure GPU-time cost under concurrent load, to "
+      "compare budget-constrained routing {pilot}, and to evaluate non-stationary and neural bandit variants."),
 ]
 
 REFS = {

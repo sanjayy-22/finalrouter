@@ -159,9 +159,15 @@ for el in els:
             "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
         fig_xml[{"rId9": 1, "rId10": 2, "rId11": 3}[rid]] = _xml(el)
 
+# Figures span both columns as a frame pinned to the top of the page; text flows below it,
+# so a figure that does not fit never leaves a blank band (no section breaks around figures).
+FRAME = ('<w:framePr w:w="10123" w:vSpace="160" w:wrap="notBeside" w:vAnchor="margin" w:hAnchor="margin" '
+         'w:xAlign="center" w:yAlign="top"/>')
+
 def fig(n, cap):
-    return (fig_xml[n] +
-            '<w:p><w:pPr><w:keepNext w:val="0"/><w:spacing w:before="20" w:after="60"/><w:jc w:val="center"/></w:pPr>'
+    run = re.search(r"<w:r>.*?<w:drawing>.*?</w:drawing></w:r>", fig_xml[n], re.S).group(0)
+    return (f'<w:p><w:pPr><w:keepNext/>{FRAME}<w:spacing w:before="0" w:after="0"/><w:jc w:val="center"/></w:pPr>{run}</w:p>'
+            f'<w:p><w:pPr>{FRAME}<w:spacing w:before="40" w:after="0"/><w:jc w:val="center"/></w:pPr>'
             + runs(cap, 16) + '</w:p>')
 
 # ---------- assemble ----------
@@ -174,16 +180,18 @@ for item in C.BODY:
     elif k == "EQ": parts.append(p_eq(item[1], item[2]))
     elif k == "TABLE":
         _, num, title, headers, rows, widths = item
-        sz = 13 if len(headers) > 6 else 14
-        parts += [sect(2), caption_table(num, title), table(headers, rows, widths, sz), sect(1)]
+        # tables sit inside one column (4824 twips) so they flow with the text
+        parts += [caption_table(num, title), table(headers, rows, widths, 13)]
     elif k == "FIG":
-        parts += [sect(2), fig(item[1], item[2]), sect(1)]
+        parts.append(fig(item[1], item[2]))
     elif k == "ALGO":
         parts.append(algo(item[1], item[2]))
     else:
         raise ValueError(k)
 
-parts.append('<w:p><w:pPr><w:keepNext/><w:spacing w:before="100" w:after="40"/><w:jc w:val="center"/></w:pPr>'
+# the reference list starts on a new page that holds references only
+parts.append(sect(2))   # continuous break: balances the two columns of the last text page
+parts.append('<w:p><w:pPr><w:keepNext/><w:pageBreakBefore/><w:spacing w:before="0" w:after="40"/><w:jc w:val="center"/></w:pPr>'
              f'<w:r><w:rPr>{FONT}<w:b/><w:sz w:val="16"/></w:rPr><w:t>REFERENCES</w:t></w:r></w:p>')
 for key, n in sorted(order.items(), key=lambda kv: kv[1]):
     parts.append('<w:p><w:pPr><w:spacing w:before="0" w:after="20" w:line="240" w:lineRule="auto"/>'
