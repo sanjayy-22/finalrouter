@@ -130,8 +130,6 @@ BODY = [
       "estimates, and larger values mean more exploration. The model with the highest score is called. Once the reward "
       "is known, only that model's summary is updated with the query's features and the reward; the other models are "
       "left unchanged, because nothing was learned about them."),
-("FIG", 1, "Fig. 1. Proposed adaptive LLM routing loop with contextual-bandit feedback (dashed: the updated "
-        "statistics drive future routing decisions)."),
 ("H2", "C. Reward Function"),
 ("P", "The reward turns quality, cost, and latency into one number. It starts from the quality of the answer, which "
       "lies between 0 and 1, and subtracts a cost penalty and a latency penalty. Each penalty is the request's cost or "
@@ -151,6 +149,8 @@ BODY = [
       "uninformed mix costs. The rule-based policy maps each task category to the model with the highest mean "
       "development reward, which is the strongest simple policy a practitioner could write by hand. None of these "
       "policies updates from feedback; only LinUCB learns from the rewards it observes."),
+("FIG", 1, "Fig. 1. Proposed adaptive LLM routing loop with contextual-bandit feedback (dashed: the updated "
+        "statistics drive future routing decisions)."),
 ("P", "Because every query is run on every model, each policy is replayed on the same "
       "query stream and sees only the logged outcome of the model it selects; this also makes the per-query oracle "
       "computable {replay}. Learning policies are first warmed up on the 90 development queries (unscored) and then "
@@ -162,8 +162,11 @@ BODY = [
       "bandit variants (linear Thompson sampling, ε-greedy ridge regression with ε = 0.1, and sliding-window LinUCB "
       "with a window of 200). Workload shift (E5) and multi-category analysis (E3) require more than one task category "
       "and are left to the full study."),
-("P", "One script runs the pilot: it serves each model in turn with vLLM, sends all 300 problems through a "
-      "resumable collector, frees the GPU for the next model, and finally runs the replay with seeds 0-4."),
+("P", "One script runs the pilot. For each model in turn it starts a vLLM server with a 4,096-token context and "
+      "90% GPU-memory utilization, waits until the server answers, sends all 300 problems through the collector, and "
+      "stops the server so that the next model has the whole GPU. The collector writes one record per query-model "
+      "pair and skips pairs that are already logged, so an interrupted run resumes where it stopped. When all three "
+      "models are done, the script runs the replay comparison with seeds 0-4."),
 ("H1", "VI. Results and Analysis"),
 ("H2", "A. Per-Model Outcomes"),
 ("P", "Table I summarizes the 900 logged outcomes (300 problems × 3 models); latency, output tokens, and cost are "
